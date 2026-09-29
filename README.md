@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📚 ReadVault
 
-## Getting Started
+A modern, self-hosted personal reading and comic tracking platform built with Next.js. Track your Manga, Manhwa, Manhua, and Light Novels with chapter progress tracking, visual completion bars, personal reviews, and auto-fetched metadata from AniList.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs) ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript) ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-38bdf8?logo=tailwindcss) ![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)
+
+---
+
+## ✨ Features
+
+- 📖 **Multi-Format Support** — Dedicated categories for **Manga (Japan)**, **Manhwa (Korea)**, **Manhua (China)**, and **Light Novels**.
+- 🔍 **Instant Metadata via AniList** — Powered by the public [AniList GraphQL API](https://anilist.co/) with **zero API key required**. Search and auto-fill official cover art, total chapters, synopsis, genres, and release status instantly.
+- ⚡ **Chapter Progress Tracker** — Track current chapter and volume with an interactive progress bar and a quick **+1 Chapter** button directly on each card.
+- 🏷️ **Publishing Status Badges** — Monitor series status whether *Ongoing (Releasing)*, *Finished*, or on *Hiatus*.
+- 📝 **Lore & Power System Notes** — Markdown-enabled notes for logging magic systems, cultivation stages, character builds, and favorite story arcs.
+- 📊 **Statistics Dashboard** — Overview metrics for total titles, completed series, total chapters read, and average rating.
+- 💾 **JSON Backup & Restore** — Export and import your entire reading library as a portable JSON file.
+- ☁️ **Cloud-Ready** — Free deployment to [Vercel](https://vercel.com/) with zero configuration.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| Framework | Next.js 16 (App Router, TypeScript) |
+| Styling | Tailwind CSS v4 + Lucide Icons |
+| Data Storage | Browser LocalStorage (portable JSON backup) |
+| Metadata API | AniList Public GraphQL API (no key needed) |
+| Deployment | Vercel (free tier) |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+
+### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/your-username/read-vault.git
+cd read-vault
+
+# Install dependencies
+npm install
+
+# Start the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📦 Deployment
 
-## Learn More
+Deploy instantly to Vercel:
 
-To learn more about Next.js, take a look at the following resources:
+1. Push this repository to your GitHub account.
+2. Go to [vercel.com](https://vercel.com/) → **Add New Project** → Import your repo.
+3. Click **Deploy**. Done!
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📄 License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT License — free to use, modify, and distribute.
