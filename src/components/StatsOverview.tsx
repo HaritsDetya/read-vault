@@ -10,11 +10,10 @@ interface StatsOverviewProps {
 
 export const StatsOverview: React.FC<StatsOverviewProps> = ({ entries }) => {
   const total = entries.length;
+  const readingCount = entries.filter(e => e.status === 'READING').length;
   const mangaCount = entries.filter(e => e.comicFormat === 'MANGA').length;
   const manhwaCount = entries.filter(e => e.comicFormat === 'MANHWA').length;
   const manhuaCount = entries.filter(e => e.comicFormat === 'MANHUA' || e.comicFormat === 'NOVEL').length;
-
-  const totalChaptersRead = entries.reduce((acc, e) => acc + (e.currentChapter || 0), 0);
 
   const ratedEntries = entries.filter(e => (e.rating || 0) > 0);
   const avgRating = ratedEntries.length > 0
@@ -28,6 +27,13 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ entries }) => {
       icon: Layers,
       color: 'text-indigo-400',
       bg: 'bg-indigo-500/10 border-indigo-500/20'
+    },
+    {
+      label: 'Sedang Dibaca',
+      value: readingCount,
+      icon: CheckCircle2,
+      color: 'text-cyan-400',
+      bg: 'bg-cyan-500/10 border-cyan-500/20'
     },
     {
       label: 'Koleksi Manga',
@@ -49,13 +55,6 @@ export const StatsOverview: React.FC<StatsOverviewProps> = ({ entries }) => {
       icon: BookmarkCheck,
       color: 'text-amber-400',
       bg: 'bg-amber-500/10 border-amber-500/20'
-    },
-    {
-      label: 'Chapter Dibaca',
-      value: `${totalChaptersRead.toLocaleString()} Ch`,
-      icon: CheckCircle2,
-      color: 'text-cyan-400',
-      bg: 'bg-cyan-500/10 border-cyan-500/20'
     },
     {
       label: 'Rata-rata Rating',

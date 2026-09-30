@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ReadEntry, ReadStatus, ComicFormat, PublishStatus } from '@/types/read';
+import { fetchAnilistDetails } from '@/lib/anilist';
 import {
-  X, Star, Trash2, Save, FileText, Plus, Minus
+  X, Star, Trash2, Save, FileText, Plus, Minus,
+  RefreshCw, CheckCircle2, BookOpen, Flame
 } from 'lucide-react';
 
 interface ReadDetailModalProps {
@@ -20,6 +22,9 @@ export const ReadDetailModal: React.FC<ReadDetailModalProps> = ({
   if (!isOpen || !entry) return null;
 
   const [status, setStatus] = useState<ReadStatus>(entry.status);
+  const [publishStatus, setPublishStatus] = useState<PublishStatus>(
+    entry.publishStatus || (entry.totalChapters ? 'FINISHED' : 'RELEASING')
+  );
   const [comicFormat, setComicFormat] = useState<ComicFormat>(entry.comicFormat);
   const [platform, setPlatform] = useState(entry.platform || 'Online');
   const [rating, setRating] = useState<number>(entry.rating || 0);
@@ -31,20 +36,70 @@ export const ReadDetailModal: React.FC<ReadDetailModalProps> = ({
   const [review, setReview] = useState(entry.review || '');
   const [notes, setNotes] = useState(entry.notes || '');
 
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  // Auto-sync status from AniList if entry has anilistId and was releasing or missing totalChapters
+  useEffect(() => {
+    if (entry && entry.anilistId && (!entry.totalChapters || entry.publishStatus === 'RELEASING')) {
+      setIsSyncing(true);
+      fetchAnilistDetails(entry.anilistId).then(data => {
+        setIsSyncing(false);
+        if (data) {
+          if (data.status === 'FINISHED' && data.chapters) {
+            setTotalChapters(data.chapters);
+            setPublishStatus('FINISHED');
+            setSyncMessage(`Tamat di AniList! Total chapter otomatis diset ke ${data.chapters}.`);
+          } else if (data.status === 'RELEASING') {
+            setPublishStatus('RELEASING');
+          }
+        }
+      }).catch(() => setIsSyncing(false));
+    }
+  }, [entry?.id]);
+
+  const handleSyncAnilist = async () => {
+    if (!entry?.anilistId) return;
+    setIsSyncing(true);
+    setSyncMessage(null);
+    try {
+      const data = await fetchAnilistDetails(entry.anilistId);
+      if (data) {
+        if (data.status === 'FINISHED' && data.chapters) {
+          setTotalChapters(data.chapters);
+          setPublishStatus('FINISHED');
+          setSyncMessage(`Sukses! Judul ini telah Tamat dengan ${data.chapters} Chapter.`);
+        } else if (data.status === 'RELEASING') {
+          setPublishStatus('RELEASING');
+          setSyncMessage('Status AniList: Masih Releasing (Ongoing). Chapter tetap "-".');
+        } else {
+          setSyncMessage(`Status AniList: ${data.status || 'Updated'}`);
+        }
+      } else {
+        setSyncMessage('Tidak dapat mengambil data dari AniList.');
+      }
+    } catch {
+      setSyncMessage('Gagal menghubungi server AniList.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleSave = () => {
     let finalStatus = status;
-    if (totalChapters > 0 && currentChapter >= totalChapters && status === 'READING') {
+    if (publishStatus === 'FINISHED' && totalChapters > 0 && currentChapter >= totalChapters && status === 'READING') {
       finalStatus = 'COMPLETED';
     }
 
     const updated: ReadEntry = {
       ...entry,
       status: finalStatus,
+      publishStatus,
       comicFormat,
       platform,
       rating,
       currentChapter: Number(currentChapter),
-      totalChapters: totalChapters > 0 ? Number(totalChapters) : undefined,
+      totalChapters: publishStatus === 'FINISHED' && totalChapters > 0 ? Number(totalChapters) : undefined,
       currentVolume: currentVolume > 0 ? Number(currentVolume) : undefined,
       startDate: startDate || undefined,
       finishDate: finishDate || undefined,
@@ -139,68 +194,201 @@ export const ReadDetailModal: React.FC<ReadDetailModalProps> = ({
             </div>
           </div>
 
-          {/* Chapter Progress Tracker */}
-          <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
-                Progress Chapter
-              </span>
-              {totalChapters > 0 && (
-                <span className="text-xs text-zinc-400">{progressPercent}% selesai</span>
+          {/* Chapter Progress Tracker - Redesigned & Tidied */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-zinc-950/80 border border-zinc-800 space-y-4 shadow-inner">
+            {/* Header row */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-white uppercase tracking-wider">
+                  Progress Chapter
+                </span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                  publishStatus === 'FINISHED'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                }`}>
+                  {publishStatus === 'FINISHED' ? `Tamat (${totalChapters || '-'} Ch)` : '● Ongoing / Masih Rilis (-)'}
+                </span>
+              </div>
+
+              {/* AniList sync button if anilistId exists */}
+              {entry.anilistId && (
+                <button
+                  type="button"
+                  onClick={handleSyncAnilist}
+                  disabled={isSyncing}
+                  className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/60 px-2.5 py-1 rounded-lg transition-all"
+                  title="Cek apakah sudah tamat di AniList"
+                >
+                  <RefreshCw className={`w-3 h-3 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Memeriksa...' : 'Cek Status AniList'}</span>
+                </button>
               )}
             </div>
 
-            {/* Progress Bar */}
-            {totalChapters > 0 && (
-              <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPercent}%` }}
-                />
+            {/* Sync feedback notification */}
+            {syncMessage && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-300">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{syncMessage}</span>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Current Chapter Counter */}
-              <div>
-                <label className="block text-xs text-zinc-400 mb-1.5">Chapter Saat Ini (Terakhir Baca)</label>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setCurrentChapter(Math.max(0, currentChapter - 1))}
-                    className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors">
+            {/* Progress Bar */}
+            {publishStatus === 'FINISHED' && totalChapters > 0 ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Progres Membaca</span>
+                  <span className="font-semibold text-emerald-400">{progressPercent}% selesai ({currentChapter}/{totalChapters} Ch)</span>
+                </div>
+                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span className="flex items-center gap-1.5 text-cyan-300">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                    <span>Serial Masih Berlanjut (Ongoing)</span>
+                  </span>
+                  <span className="font-mono text-cyan-400 text-xs font-semibold">Ch. {currentChapter} / -</span>
+                </div>
+                <div className="h-1.5 bg-zinc-800/80 rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-cyan-500/40 via-cyan-400 to-emerald-400/40 rounded-full w-full" />
+                </div>
+              </div>
+            )}
+
+            {/* Main Interactive Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              {/* Current Chapter Section */}
+              <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl p-3.5 flex flex-col justify-between">
+                <label className="block text-xs font-semibold text-zinc-300 mb-2">
+                  Chapter Terakhir Dibaca
+                </label>
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentChapter(Math.max(0, currentChapter - 1))}
+                    className="p-2.5 rounded-xl bg-zinc-800 border border-zinc-700/80 text-zinc-200 hover:text-white hover:bg-zinc-700 transition-colors"
+                  >
                     <Minus className="w-4 h-4" />
                   </button>
-                  <input type="number" min="0" value={currentChapter}
+                  <input
+                    type="number"
+                    min="0"
+                    value={currentChapter}
                     onChange={(e) => {
                       const val = Math.max(0, parseInt(e.target.value) || 0);
                       setCurrentChapter(val);
-                      if (totalChapters > 0 && val >= totalChapters) setStatus('COMPLETED');
+                      if (publishStatus === 'FINISHED' && totalChapters > 0 && val >= totalChapters) {
+                        setStatus('COMPLETED');
+                      }
                     }}
-                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl py-2 px-3 text-center text-lg font-bold text-white focus:border-emerald-500 focus:outline-none" />
-                  <button type="button" onClick={() => {
-                    const next = currentChapter + 1;
-                    setCurrentChapter(next);
-                    if (totalChapters > 0 && next >= totalChapters) setStatus('COMPLETED');
-                  }}
-                    className="p-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition-colors">
+                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xl font-black text-emerald-400 focus:border-emerald-500 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = currentChapter + 1;
+                      setCurrentChapter(next);
+                      if (publishStatus === 'FINISHED' && totalChapters > 0 && next >= totalChapters) {
+                        setStatus('COMPLETED');
+                      }
+                    }}
+                    className="p-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-500 transition-colors shadow-md shadow-emerald-600/30"
+                  >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
+                {/* Quick jump step buttons */}
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-zinc-500">Lompat:</span>
+                  {[5, 10, 20].map((step) => (
+                    <button
+                      key={step}
+                      type="button"
+                      onClick={() => {
+                        const next = currentChapter + step;
+                        setCurrentChapter(next);
+                        if (publishStatus === 'FINISHED' && totalChapters > 0 && next >= totalChapters) {
+                          setStatus('COMPLETED');
+                        }
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 text-[11px] font-semibold text-zinc-300 transition-colors"
+                    >
+                      +{step}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Total Chapters & Volume */}
-              <div className="grid grid-cols-2 gap-2">
+              {/* Status Rilis & Total Chapter & Volume */}
+              <div className="bg-zinc-900/70 border border-zinc-800/80 rounded-xl p-3.5 space-y-3">
                 <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Total Chapter</label>
-                  <input type="number" min="0" value={totalChapters}
-                    onChange={(e) => setTotalChapters(Math.max(0, parseInt(e.target.value) || 0))}
-                    placeholder="Misal: 179"
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 px-3 text-center text-sm text-white focus:border-emerald-500 focus:outline-none" />
+                  <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
+                    Status Rilis Seri
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPublishStatus('RELEASING')}
+                      className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                        publishStatus === 'RELEASING'
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm'
+                          : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                      }`}
+                    >
+                      ● Masih Rilis (-)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPublishStatus('FINISHED')}
+                      className={`py-1.5 px-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                        publishStatus === 'FINISHED'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm'
+                          : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                      }`}
+                    >
+                      ✓ Sudah Tamat
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-zinc-400 mb-1.5">Volume Saat Ini</label>
-                  <input type="number" min="0" value={currentVolume}
-                    onChange={(e) => setCurrentVolume(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2.5 px-3 text-center text-sm text-white focus:border-emerald-500 focus:outline-none" />
+
+                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1">Total Chapter</label>
+                    {publishStatus === 'RELEASING' ? (
+                      <div className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-mono text-cyan-400 font-bold">
+                        - (Ongoing)
+                      </div>
+                    ) : (
+                      <input
+                        type="number"
+                        min="1"
+                        value={totalChapters || ''}
+                        onChange={(e) => setTotalChapters(Math.max(0, parseInt(e.target.value) || 0))}
+                        placeholder="Misal: 179"
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-bold text-white focus:border-emerald-500 focus:outline-none"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 mb-1">Volume Saat Ini</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={currentVolume || ''}
+                      onChange={(e) => setCurrentVolume(Math.max(0, parseInt(e.target.value) || 0))}
+                      placeholder="Vol 1"
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-center text-xs font-bold text-white focus:border-emerald-500 focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

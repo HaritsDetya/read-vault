@@ -124,8 +124,14 @@ export const ReadCard: React.FC<ReadCardProps> = ({ entry, onClick, onQuickChapt
         {/* Footer Meta (Chapter count & notes) */}
         <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-400">
           <div className="flex items-center gap-1.5 font-medium text-zinc-200">
-            <span>
-              Ch. {entry.currentChapter || 0} {entry.totalChapters ? `/ ${entry.totalChapters}` : ''}
+            <span className="flex items-center gap-1">
+              <span>Ch. {entry.currentChapter || 0}</span>
+              <span className="text-zinc-500">{entry.totalChapters ? `/ ${entry.totalChapters}` : '/ -'}</span>
+              {(!entry.totalChapters || entry.publishStatus === 'RELEASING') && (
+                <span className="text-[9px] text-cyan-400 font-bold px-1.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 ml-1">
+                  Ongoing
+                </span>
+              )}
             </span>
           </div>
 

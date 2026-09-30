@@ -201,3 +201,51 @@ export async function searchAnilist(query: string) {
     item.genres.some(g => g.toLowerCase().includes(clean))
   );
 }
+
+export async function fetchAnilistDetails(id: number): Promise<{
+  status?: string;
+  chapters?: number | null;
+  volumes?: number | null;
+} | null> {
+  const graphQLQuery = `
+    query ($id: Int) {
+      Media (id: $id, type: MANGA) {
+        status
+        chapters
+        volumes
+      }
+    }
+  `;
+
+  try {
+    const res = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        query: graphQLQuery,
+        variables: { id }
+      })
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data?.data?.Media || null;
+    }
+  } catch (err) {
+    console.warn('Failed to fetch AniList details for ID:', id, err);
+  }
+
+  // Fallback check
+  const fallback = FALLBACK_READ_DATABASE.find(item => item.id === id);
+  if (fallback) {
+    return {
+      status: fallback.status,
+      chapters: fallback.totalChapters
+    };
+  }
+
+  return null;
+}

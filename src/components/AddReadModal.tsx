@@ -26,6 +26,7 @@ export const AddReadModal: React.FC<AddReadModalProps> = ({ isOpen, onClose, onA
   const [platform, setPlatform] = useState('Webtoon');
   const [currentChapter, setCurrentChapter] = useState<number>(1);
   const [totalChapters, setTotalChapters] = useState<number>(0);
+  const [isOngoing, setIsOngoing] = useState<boolean>(true);
 
   // Manual fields
   const [manualTitle, setManualTitle] = useState('');
@@ -53,7 +54,13 @@ export const AddReadModal: React.FC<AddReadModalProps> = ({ isOpen, onClose, onA
   const handleSelectItem = (item: any) => {
     setSelectedItem(item);
     setComicFormat(item.comicFormat);
-    if (item.totalChapters) setTotalChapters(item.totalChapters);
+    if (item.totalChapters && item.status === 'FINISHED') {
+      setTotalChapters(item.totalChapters);
+      setIsOngoing(false);
+    } else {
+      setTotalChapters(0);
+      setIsOngoing(true);
+    }
   };
 
   const handleSubmitApi = (e: React.FormEvent) => {
@@ -70,10 +77,10 @@ export const AddReadModal: React.FC<AddReadModalProps> = ({ isOpen, onClose, onA
       coverImage: selectedItem.coverImage,
       bannerImage: selectedItem.bannerImage,
       status,
-      publishStatus: selectedItem.status === 'FINISHED' ? 'FINISHED' : selectedItem.status === 'HIATUS' ? 'HIATUS' : 'RELEASING',
+      publishStatus: isOngoing ? 'RELEASING' : (selectedItem.status === 'HIATUS' ? 'HIATUS' : 'FINISHED'),
       rating: 0,
-      currentChapter: status === 'COMPLETED' ? (totalChapters || 0) : currentChapter,
-      totalChapters: totalChapters > 0 ? totalChapters : undefined,
+      currentChapter: status === 'COMPLETED' && !isOngoing && totalChapters > 0 ? totalChapters : currentChapter,
+      totalChapters: isOngoing ? undefined : (totalChapters > 0 ? totalChapters : undefined),
       platform,
       genres: selectedItem.genres || [],
       author: selectedItem.author,
@@ -98,9 +105,10 @@ export const AddReadModal: React.FC<AddReadModalProps> = ({ isOpen, onClose, onA
       coverImage: manualCover.trim() || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?q=80&w=600&auto=format&fit=crop',
       bannerImage: manualCover.trim() || undefined,
       status,
+      publishStatus: isOngoing ? 'RELEASING' : 'FINISHED',
       rating: 0,
       currentChapter,
-      totalChapters: totalChapters > 0 ? totalChapters : undefined,
+      totalChapters: isOngoing ? undefined : (totalChapters > 0 ? totalChapters : undefined),
       platform,
       genres: manualGenre ? manualGenre.split(',').map(g => g.trim()) : ['Fantasy'],
       author: manualAuthor.trim() || undefined,
@@ -243,14 +251,44 @@ export const AddReadModal: React.FC<AddReadModalProps> = ({ isOpen, onClose, onA
 
                   <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-zinc-950/60 border border-zinc-800">
                     <div>
-                      <label className="block text-xs text-zinc-400 mb-1">Chapter Saat Ini</label>
-                      <input type="number" min="0" value={currentChapter} onChange={(e) => setCurrentChapter(Number(e.target.value))}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white text-center focus:outline-none" />
+                      <label className="block text-xs text-zinc-400 mb-1">Chapter Terakhir Dibaca</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        value={currentChapter} 
+                        onChange={(e) => setCurrentChapter(Number(e.target.value))}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white text-center focus:outline-none" 
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs text-zinc-400 mb-1">Total Chapter</label>
-                      <input type="number" min="0" value={totalChapters} onChange={(e) => setTotalChapters(Number(e.target.value))}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white text-center focus:outline-none" />
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs text-zinc-400">Total Chapter</label>
+                        <button
+                          type="button"
+                          onClick={() => setIsOngoing(!isOngoing)}
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-all ${
+                            isOngoing 
+                              ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' 
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                          }`}
+                        >
+                          {isOngoing ? '● Ongoing (-)' : '○ Tamat'}
+                        </button>
+                      </div>
+                      {isOngoing ? (
+                        <div className="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-lg py-1.5 text-xs text-cyan-400 text-center font-mono font-bold">
+                          - (Masih Rilis)
+                        </div>
+                      ) : (
+                        <input 
+                          type="number" 
+                          min="1" 
+                          value={totalChapters || ''} 
+                          onChange={(e) => setTotalChapters(Number(e.target.value))}
+                          placeholder="Misal: 179"
+                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white text-center focus:outline-none" 
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -327,6 +365,49 @@ export const AddReadModal: React.FC<AddReadModalProps> = ({ isOpen, onClose, onA
                   <input type="text" value={manualYear} onChange={(e) => setManualYear(e.target.value)}
                     placeholder="2020"
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-200 focus:border-emerald-500 focus:outline-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-zinc-950/60 border border-zinc-800">
+                <div>
+                  <label className="block text-xs text-zinc-400 mb-1">Chapter Terakhir Dibaca</label>
+                  <input 
+                    type="number" 
+                    min="0" 
+                    value={currentChapter} 
+                    onChange={(e) => setCurrentChapter(Number(e.target.value))}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white text-center focus:outline-none" 
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs text-zinc-400">Total Chapter</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsOngoing(!isOngoing)}
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded transition-all ${
+                        isOngoing 
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30' 
+                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                      }`}
+                    >
+                      {isOngoing ? '● Ongoing (-)' : '○ Tamat'}
+                    </button>
+                  </div>
+                  {isOngoing ? (
+                    <div className="w-full bg-zinc-900/60 border border-zinc-800/80 rounded-lg py-1.5 text-xs text-cyan-400 text-center font-mono font-bold">
+                      - (Masih Rilis)
+                    </div>
+                  ) : (
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={totalChapters || ''} 
+                      onChange={(e) => setTotalChapters(Number(e.target.value))}
+                      placeholder="Misal: 179"
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white text-center focus:outline-none" 
+                    />
+                  )}
                 </div>
               </div>
 
